@@ -87,6 +87,13 @@ ghi consent nào được tạo.
 Trường có `sharedWithSystem = true` cần giá trị thật làm bằng chứng. Đối chiếu theo `name`
 (+ `dataType` khi cần phân biệt trường trùng tên), app không cần biết `id` của trường.
 
+> **Trường ẩn (`display = false`).** `/config` trả về **mọi** trường của form dữ liệu nguồn, nhưng chỉ
+> trường được chọn cho mục đích đó trong template mới có `display = true`. Trường `display = false` vẫn
+> nằm trong `item.dataFields` để app biết form nguồn thu những gì. SDK **không** dựng UI cho nó,
+> **không** bao giờ đặt `isAccept = true` và **không** tính vào ràng buộc bắt buộc, nhưng **vẫn** gửi
+> `value` khi `sharedWithSystem = true` (khoá có trong `values` với `isAccept = false`). Tự dựng UI thì
+> duyệt `item.visibleDataFields`. Backend cũ không trả khoá này — khi đó SDK coi như `display = true`.
+
 **Cách khuyến nghị — snapshot ngay trước khi submit:**
 
 ```swift

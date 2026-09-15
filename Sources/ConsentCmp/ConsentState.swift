@@ -23,10 +23,15 @@ public struct ConsentState {
         public var accepted: Bool
         /// Gia tri nguoi dung nhap; nil khi form cua app khong co truong tuong ung.
         public var value: String?
+        /// Ban sao cua `ConsentField.display` — de state tu chan viec bat truong an ma khong phai
+        /// cam theo config o moi loi goi (R16). Khong luu xuong storage: `defaults`/`merge` luon
+        /// dung lai tu `/config` moi.
+        public var display: Bool
 
-        public init(accepted: Bool = false, value: String? = nil) {
+        public init(accepted: Bool = false, value: String? = nil, display: Bool = true) {
             self.accepted = accepted
             self.value = value
+            self.display = display
         }
     }
 
@@ -59,6 +64,9 @@ public struct ConsentState {
             let granted = item.mustBeGranted || item.defaultChecked
             state.setGranted(item.key, granted)
             for field in item.dataFields {
+                // Truong an (`display = false`) van co khoa trong `values` de gui kem `value`,
+                // nhung `isAccept` luon false — `setFieldGranted` tu chan nho co `display` (R16).
+                state.setFieldDisplay(item.key, field.key, field.display)
                 state.setFieldGranted(item.key, field.key, granted && field.required)
             }
         }
@@ -125,7 +133,8 @@ public struct ConsentState {
         if purposes.isEmpty { return false }
         if purposes.values.contains(false) { return false }
         for group in fields.values {
-            for decision in group.values where !decision.accepted { return false }
+            // Truong an khong bao gio bat duoc nen khong tinh vao "da dong y tat ca" (R16).
+            for decision in group.values where decision.display && !decision.accepted { return false }
         }
         return true
     }
@@ -144,13 +153,25 @@ public struct ConsentState {
     }
 
     /// Bat truong thi purpose cha bat theo (R2).
+    /// Day la CHOT chan duy nhat cho R16: truong `display = false` khong bao gio len `true`, du
+    /// duong di nao goi vao (bat purpose cha, "dong y tat ca", nap lai ban ghi cu, app goi thang).
     public mutating func setFieldGranted(_ purposeKey: String, _ fieldKey: String, _ granted: Bool) {
         var group = fields[purposeKey] ?? [:]
         var decision = group[fieldKey] ?? FieldDecision()
-        decision.accepted = granted
+        decision.accepted = granted && decision.display
         group[fieldKey] = decision
         fields[purposeKey] = group
-        if granted { purposes[purposeKey] = true }
+        if decision.accepted { purposes[purposeKey] = true }
+    }
+
+    /// Danh dau truong co duoc hoi nguoi dung hay khong; goi truoc khi set `granted`.
+    public mutating func setFieldDisplay(_ purposeKey: String, _ fieldKey: String, _ display: Bool) {
+        var group = fields[purposeKey] ?? [:]
+        var decision = group[fieldKey] ?? FieldDecision()
+        decision.display = display
+        if !display { decision.accepted = false }
+        group[fieldKey] = decision
+        fields[purposeKey] = group
     }
 
     /// Gia tri nguoi dung nhap; nil = khong gui khoa `value`.
@@ -183,6 +204,7 @@ public struct ConsentState {
         }
         setGranted(purposeKey, granted)
         if granted {
+            // Truong an bi `setFieldGranted` giu o false (R16).
             for field in item.dataFields {
                 setFieldGranted(purposeKey, field.key, true)
             }
@@ -197,6 +219,8 @@ public struct ConsentState {
         let item = config?.item(forKey: purposeKey)
         let field = item?.field(forKey: fieldKey)
 
+        // Truong an khong co toggle tren UI; app goi thang thi cung khong doi duoc gi (R16).
+        if let field = field, !field.display { return .applied }
         if !granted, field?.required == true, isGranted(purposeKey) {
             setFieldGranted(purposeKey, fieldKey, true)
             return .blockedRequired
@@ -257,7 +281,9 @@ public struct ConsentState {
                 }
                 continue
             }
-            for field in item.dataFields where field.required && !isFieldGranted(item.key, field.key) {
+            // Truong an khong tinh vao rang buoc bat buoc (R16).
+            for field in item.dataFields
+            where field.required && field.display && !isFieldGranted(item.key, field.key) {
                 return MissingRequired(item: item, field: field)
             }
         }

@@ -257,6 +257,8 @@ public final class ConsentCmp {
     private func collectValues(_ state: inout ConsentState, _ config: ConsentConfig?) {
         guard let source = valueSource, let config = config else { return }
         for item in config.items {
+            // Lay ca truong an (`display = false`): khong hoi nguoi dung nhung van phai ghi lai
+            // du lieu duoc chia se cho he thong (R16).
             for field in item.dataFields where field.sharedWithSystem {
                 if let value = source(field),
                    !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

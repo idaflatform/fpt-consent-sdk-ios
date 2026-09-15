@@ -15,9 +15,17 @@ public struct ConsentField: Equatable {
     public let sensitive: Bool
     /// True khi truong duoc chia se cho he thong / ben thu ba.
     public let sharedWithSystem: Bool
+    /// Co hoi nguoi dung ve truong nay hay khong.
+    ///
+    /// `/config` tra ve MOI truong cua form du lieu nguon, nhung chi truong duoc chon cho purpose
+    /// trong template moi co `display = true`. Truong `display = false` khong dung UI, khong bao gio
+    /// `isAccept = true` va khong tinh vao rang buoc bat buoc, nhung VAN duoc quet gia tri tu form de
+    /// gui kem khi `sharedWithSystem = true` (R16).
+    /// Backend cu khong tra khoa nay — khi do mac dinh `true`.
+    public let display: Bool
 
     public init(id: String?, name: String?, title: String?, dataType: String?,
-                required: Bool, sensitive: Bool, sharedWithSystem: Bool) {
+                required: Bool, sensitive: Bool, sharedWithSystem: Bool, display: Bool = true) {
         self.id = id
         self.name = name
         self.title = title
@@ -25,6 +33,7 @@ public struct ConsentField: Equatable {
         self.required = required
         self.sensitive = sensitive
         self.sharedWithSystem = sharedWithSystem
+        self.display = display
     }
 
     /// Khoa gui len `values` — uu tien `id`, fallback `name`.
@@ -69,11 +78,17 @@ public struct ConsentItem: Equatable {
     public var key: String { code ?? id ?? "" }
 
     /// Truong du lieu bat buoc dau tien; nil neu khong co.
+    ///
+    /// Chi tinh truong dang hien: truong `display = false` nguoi dung khong nhin thay va khong bam
+    /// duoc, nen khong duoc phep chan submit hay khoa purpose (R16).
     public var firstRequiredField: ConsentField? {
-        dataFields.first { $0.required }
+        dataFields.first { $0.required && $0.display }
     }
 
     public var hasRequiredField: Bool { firstRequiredField != nil }
+
+    /// Cac truong duoc hoi nguoi dung — chi nhung truong nay moi dung UI (R16).
+    public var visibleDataFields: [ConsentField] { dataFields.filter { $0.display } }
 
     /// True khi purpose khong the tat: chinh no `required`, hoac chua truong `required` (R6).
     public var mustBeGranted: Bool { required || hasRequiredField }
@@ -205,7 +220,9 @@ public enum ConsentParser {
                      dataType: text(node, "dataType"),
                      required: bool(node, "required"),
                      sensitive: bool(node, "sensitive"),
-                     sharedWithSystem: bool(node, "sharedWithSystem"))
+                     sharedWithSystem: bool(node, "sharedWithSystem"),
+                     // Thieu `display` = backend cu -> mac dinh hien, giu tuong thich nguoc (R16).
+                     display: node["display"] as? Bool ?? true)
     }
 
     private static func text(_ node: [String: Any], _ key: String) -> String? {

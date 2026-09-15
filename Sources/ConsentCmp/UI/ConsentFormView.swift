@@ -127,7 +127,7 @@ public struct ConsentFormView: View {
 
                 Spacer(minLength: 4)
 
-                if !item.dataFields.isEmpty {
+                if !item.visibleDataFields.isEmpty {
                     Button(model.isExpanded(item.key) ? strings.collapse : strings.expand) {
                         model.toggleExpanded(item.key)
                     }
@@ -148,9 +148,9 @@ public struct ConsentFormView: View {
                     .foregroundColor(theme.primary)
             }
 
-            if model.isExpanded(item.key) && !item.dataFields.isEmpty {
+            if model.isExpanded(item.key) && !item.visibleDataFields.isEmpty {
                 Divider().background(theme.border)
-                ForEach(item.dataFields, id: \.key) { field in
+                ForEach(item.visibleDataFields, id: \.key) { field in
                     fieldRow(item, field)
                 }
             }
