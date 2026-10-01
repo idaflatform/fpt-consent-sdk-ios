@@ -3,7 +3,8 @@ import Foundation
 /// Diem vao cua SDK: tai cau hinh, gui consent, luu quyet dinh cuc bo.
 ///
 /// ```swift
-/// // Mac dinh tro toi PROD; chi truyen baseUrl khi can moi truong khac.
+/// // Khai CMPCodeConfig (+ CMPBaseUrl) trong Info.plist roi dung `ConsentCmp.shared`,
+/// // hoac tu tao. Mac dinh tro toi PROD; chi truyen baseUrl khi can moi truong khac.
 /// let cmp = ConsentCmp(options: ConsentOptions(codeConfig: "cp_xxx::t_yyy"))
 ///
 /// let uat = ConsentCmp(options: ConsentOptions(codeConfig: "cp_xxx::t_yyy",
@@ -70,12 +71,20 @@ public final class ConsentCmp {
     /// ])
     /// try await cmp.submit(&state)
     /// ```
+    ///
+    /// - Note: Gon hon la truyen thang `submit(&state, values:)` — khong phai nho goi 2 buoc,
+    ///   va gia tri khong bi giu lai cho lan submit sau.
     public func setValues(_ values: [String: String]) {
+        setValueSource(ConsentCmp.makeSource(values))
+    }
+
+    /// Doi chieu `name|dataType` truoc, `name` sau; khong phan biet hoa thuong.
+    static func makeSource(_ values: [String: String]) -> ValueSource {
         var normalized: [String: String] = [:]
         for (key, value) in values {
             normalized[ConsentCmp.normalizeKey(key)] = value
         }
-        setValueSource { field in
+        return { field in
             guard let name = field.name else { return nil }
             if let dataType = field.dataType,
                let exact = normalized[ConsentCmp.normalizeKey("\(name)|\(dataType)")] {
@@ -183,8 +192,17 @@ public final class ConsentCmp {
     /// Gui quyet dinh len `POST /sendData`, luu lai khi thanh cong.
     ///
     /// `consentId` sinh moi moi lan goi; `visitorId` giu nguyen (R14).
+    ///
+    /// - Parameter values: gia tri nguoi dung da nhap, khoa nhu `setValues(_:)`
+    ///   (`"name"` hoac `"name|dataType"`). Chi dung cho lan goi nay va **thay** nguon da khai qua
+    ///   `setValues` / `setValueSource`; nil = dung nguon da khai (neu co).
+    ///
+    /// ```swift
+    /// try await cmp.submit(&state, values: ["full_name": fullName, "email|EMAIL": email])
+    /// ```
     @discardableResult
-    public func submit(_ state: inout ConsentState) async throws -> SendConsentResult {
+    public func submit(_ state: inout ConsentState,
+                       values: [String: String]? = nil) async throws -> SendConsentResult {
         let config = cachedConfig
         if let missing = state.firstMissing(config) {
             let target: String
@@ -198,7 +216,7 @@ public final class ConsentCmp {
 
         // Chi gui khoa co trong cau hinh hien tai (R3).
         state.retainOnly(config)
-        collectValues(&state, config)
+        collectValues(&state, config, values.map(ConsentCmp.makeSource) ?? valueSource)
 
         let consentId = uuid()
         var body: [String: Any] = [
@@ -242,9 +260,11 @@ public final class ConsentCmp {
         savedState()?.isGranted(purposeKey) == true
     }
 
-    /// Xoa quyet dinh + cache config; giu visitor ID (R14).
+    /// Xoa quyet dinh + cache config + nguon gia tri da khai; giu visitor ID (R14).
     public func clear() {
         cachedConfig = nil
+        // Dang xuat: khong duoc de gia tri cua nguoi dung cu lot vao ban ghi cua nguoi sau.
+        valueSource = nil
         storage.remove(Keys.state)
         storage.remove(Keys.config)
         storage.remove(Keys.configAt)
@@ -254,8 +274,9 @@ public final class ConsentCmp {
 
     /// Gan gia tri form vao cac truong `sharedWithSystem = true`.
     /// Lay ca cho truong dang tat — ban ghi phai the hien nguoi dung tu choi du lieu nao (R4).
-    private func collectValues(_ state: inout ConsentState, _ config: ConsentConfig?) {
-        guard let source = valueSource, let config = config else { return }
+    private func collectValues(_ state: inout ConsentState, _ config: ConsentConfig?,
+                               _ source: ValueSource?) {
+        guard let source = source, let config = config else { return }
         for item in config.items {
             // Lay ca truong an (`display = false`): khong hoi nguoi dung nhung van phai ghi lai
             // du lieu duoc chia se cho he thong (R16).
