@@ -28,6 +28,11 @@ public final class ConsentFormModel: ObservableObject {
         self.cmp = cmp
     }
 
+    /// Dung `ConsentCmp.shared` (tu doc Info.plist).
+    public convenience init() {
+        self.init(cmp: .shared)
+    }
+
     /// Trang thai hien tai — app dung khi tu gui (`embeddedInForm = true`).
     public var currentState: ConsentState { state }
 
@@ -124,13 +129,15 @@ public final class ConsentFormModel: ObservableObject {
     }
 
     /// SDK tu gui — dung o che do khoi consent dung doc lap.
-    public func submit(strings: ConsentStrings) {
+    ///
+    /// - Parameter values: gia tri nguoi dung da nhap, xem `ConsentCmp.submit(_:values:)`.
+    public func submit(strings: ConsentStrings, values: [String: String]? = nil) {
         guard validateRequired(strings: strings) else { return }
         Task { @MainActor in
             isSubmitting = true
             do {
                 var working = state
-                let result = try await cmp.submit(&working)
+                let result = try await cmp.submit(&working, values: values)
                 state = working
                 errorMessage = nil
                 onSubmitted?(working, result)
@@ -145,9 +152,9 @@ public final class ConsentFormModel: ObservableObject {
     }
 
     /// "Tu choi tat ca" cung la mot quyet dinh -> van ghi nhan bang chung.
-    public func rejectAllAndSubmit(strings: ConsentStrings) {
+    public func rejectAllAndSubmit(strings: ConsentStrings, values: [String: String]? = nil) {
         setAllGranted(false, strings: strings)
-        submit(strings: strings)
+        submit(strings: strings, values: values)
     }
 
     // MARK: - Noi bo

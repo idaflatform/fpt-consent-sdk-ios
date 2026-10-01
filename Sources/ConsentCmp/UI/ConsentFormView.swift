@@ -7,7 +7,10 @@ import SwiftUI
 ///
 /// Hai chế độ, giống bản Android:
 /// - `embeddedInForm = false` (mặc định): hiện nút "Từ chối tất cả" / "Đồng ý", tự gọi `/sendData`.
-/// - `embeddedInForm = true`: ẩn nút của SDK, app tự gọi `cmp.submit(&state)` khi bấm nút của mình.
+/// - `embeddedInForm = true`: ẩn nút của SDK, app tự gọi `cmp.submit(&state, values:)` khi bấm nút của mình.
+///
+/// `values` (chế độ tự gửi): giá trị người dùng đã nhập, khoá `"name"` / `"name|dataType"`. Truyền
+/// thẳng từ `@State` — SwiftUI dựng lại View khi state đổi nên lúc bấm nút luôn là giá trị mới nhất.
 @available(iOS 14.0, macOS 11.0, *)
 public struct ConsentFormView: View {
 
@@ -18,19 +21,22 @@ public struct ConsentFormView: View {
     private let embeddedInForm: Bool
     /// false (mặc định) = chip bên thứ ba hiện dưới MỌI trường của mục đích, giống portal/web.
     private let thirdPartiesOnSharedOnly: Bool
+    private let values: [String: String]?
 
     public init(model: ConsentFormModel,
                 theme: ConsentTheme = ConsentTheme(),
                 strings: ConsentStrings = ConsentStrings(),
                 showSectionTitle: Bool = true,
                 embeddedInForm: Bool = false,
-                thirdPartiesOnSharedOnly: Bool = false) {
+                thirdPartiesOnSharedOnly: Bool = false,
+                values: [String: String]? = nil) {
         self.model = model
         self.theme = theme
         self.strings = strings
         self.showSectionTitle = showSectionTitle
         self.embeddedInForm = embeddedInForm
         self.thirdPartiesOnSharedOnly = thirdPartiesOnSharedOnly
+        self.values = values
     }
 
     public var body: some View {
@@ -238,7 +244,7 @@ public struct ConsentFormView: View {
             Spacer()
 
             Button(strings.rejectAll) {
-                model.rejectAllAndSubmit(strings: strings)
+                model.rejectAllAndSubmit(strings: strings, values: values)
             }
             .font(.system(size: 13))
             .foregroundColor(theme.textSecondary)
@@ -251,7 +257,7 @@ public struct ConsentFormView: View {
             .disabled(model.isSubmitting)
 
             Button(model.config?.config?.submitLabel ?? strings.submit) {
-                model.submit(strings: strings)
+                model.submit(strings: strings, values: values)
             }
             .font(.system(size: 13, weight: .bold))
             .foregroundColor(.white)
