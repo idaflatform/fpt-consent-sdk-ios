@@ -14,7 +14,7 @@ Swift Package: core + UI SwiftUI cho luồng Data Consent của CMP.```
 Swift Package Manager, thêm vào `Package.swift` của app (hoặc Xcode → *Add Package Dependencies…*):
 
 ```swift
-.package(url: "https://github.com/idaflatform/fpt-consent-sdk-ios.git", from: "1.0.0")
+.package(url: "https://github.com/idaflatform/fpt-consent-sdk-ios.git", from: "1.1.0")
 ```
 
 ### Bước 2. Khai cấu hình trong Info.plist
@@ -66,9 +66,10 @@ Xong. Phần dưới là chi tiết và các trường hợp khác.
 
 ---
 
-## Nâng cấp từ bản cũ
+## Nâng cấp từ 1.0.x lên 1.1.0
 
-Code cũ **vẫn chạy**, không bắt buộc sửa. Nên chuyển sang cách mới:
+Đổi phiên bản package thành `from: "1.1.0"`, rồi trong Xcode chọn *File → Packages → Update to Latest
+Package Versions*. Code cũ **vẫn chạy**, không bắt buộc sửa. Nên chuyển sang cách mới:
 
 | Việc | Trước | Sau |
 |---|---|---|
