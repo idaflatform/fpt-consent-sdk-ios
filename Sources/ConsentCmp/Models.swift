@@ -39,10 +39,10 @@ public struct ConsentField: Equatable {
     /// Khoa gui len `values` — uu tien `id`, fallback `name`.
     public var key: String { id ?? name ?? "" }
 
-    /// Nhan hien thi: uu tien `title`, fallback `name`.
+    /// Nhan hien thi: uu tien `name`, fallback `title`.
     public var displayName: String {
-        if let title = title, !title.isEmpty { return title }
-        return name ?? ""
+        if let name = name, !name.isEmpty { return name }
+        return title ?? ""
     }
 }
 
