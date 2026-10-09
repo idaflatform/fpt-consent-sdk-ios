@@ -64,6 +64,24 @@ struct PrivacyScreen: View {
 
 Xong. Phần dưới là chi tiết và các trường hợp khác.
 
+### App UIKit / Flutter / React Native — không cần viết SwiftUI
+
+`ConsentViewController` bọc sẵn màn trên (chế độ SDK tự gửi):
+
+```swift
+import ConsentCmp
+
+let vc = ConsentViewController(values: ["email|EMAIL": email]) { state, result in
+    registerAccount(consentId: result.consentId)   // gửi xong; được present thì tự đóng
+}
+present(vc, animated: true)
+```
+
+Muốn nhúng khối consent vào một màn UIKit có sẵn nút của app (`embeddedInForm`), gắn
+`UIHostingController(rootView: ConsentFormView(model: model, embeddedInForm: true))` làm child view
+controller, rồi ở nút của app gọi `ConsentCmp.shared.submit(&state, values:)` như mục
+[Nhúng vào form của app](#nhúng-vào-form-của-app).
+
 ---
 
 ## Nâng cấp từ 1.0.x lên 1.1.0
