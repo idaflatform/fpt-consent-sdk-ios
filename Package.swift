@@ -14,7 +14,7 @@ let package = Package(
     targets: [
         .target(name: "ConsentCmp"),
         // Chay noi bo: `swift run ConsentFixtureRunner` (SPM tu tao product cho root package).
-        .executableTarget(name: "ConsentFixtureRunner", dependencies: ["ConsentCmp"])
-        // Khong khai testTarget khi repo chua co thu muc Tests/ — SPM bao loi thieu source.
+        .executableTarget(name: "ConsentFixtureRunner", dependencies: ["ConsentCmp"]),
+        .testTarget(name: "ConsentCmpTests", dependencies: ["ConsentCmp"])
     ]
 )

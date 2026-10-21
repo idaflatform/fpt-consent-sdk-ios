@@ -14,7 +14,7 @@ public final class ConsentFormModel: ObservableObject {
     @Published public private(set) var isLoading = false
     @Published public private(set) var isSubmitting = false
     @Published public var listHidden = false
-    @Published public private(set) var allCollapsed = false
+    @Published public private(set) var allCollapsed = true
 
     /// Goi khi SDK tu gui xong (che do khong nam trong form cua app).
     public var onSubmitted: ((ConsentState, SendConsentResult) -> Void)?
@@ -22,7 +22,7 @@ public final class ConsentFormModel: ObservableObject {
     public var onError: ((ConsentError) -> Void)?
 
     private let cmp: ConsentCmp
-    private var collapsed: Set<String> = []
+    private var expandedPurpose: String?
 
     public init(cmp: ConsentCmp) {
         self.cmp = cmp
@@ -58,12 +58,13 @@ public final class ConsentFormModel: ObservableObject {
     /// Tai `/config` (luon goi mang) roi dung trang thai ban dau.
     @MainActor
     public func load() async {
+        guard !isLoading, !isSubmitting else { return }
         isLoading = true
         errorMessage = nil
+        config = nil
         do {
             let config = try await cmp.fetchConfig()
-            self.config = config
-            self.state = cmp.initialState(config)
+            applyLoadedConfig(config)
         } catch let error as ConsentError {
             errorMessage = error.message
             onError?(error)
@@ -75,7 +76,33 @@ public final class ConsentFormModel: ObservableObject {
 
     // MARK: - Thao tac cua nguoi dung
 
+    /// Shared by loading and local preview/tests; presentation never changes consent rules.
+    func applyLoadedConfig(_ config: ConsentConfig) {
+        self.config = config
+        self.state = cmp.initialState(config)
+        errorMessage = nil
+        expandedPurpose = config.items.first(where: hasBody)?.key
+        allCollapsed = expandedPurpose == nil
+    }
+
+    func hasBody(_ item: ConsentItem) -> Bool {
+        !(item.description ?? "").isEmpty || !item.thirdParties.isEmpty || !item.visibleDataFields.isEmpty
+    }
+
+    public func setAllFields(_ item: ConsentItem, granted: Bool, strings: ConsentStrings) {
+        guard !isSubmitting else { return }
+        var blocked = false
+        for field in item.visibleDataFields {
+            if state.applyFieldToggle(config, item.key, field.key, granted) == .blockedRequired {
+                blocked = true
+            }
+        }
+        errorMessage = blocked ? strings.requiredMessage(
+            ConsentState.MissingRequired(item: item, field: item.firstRequiredField)) : nil
+    }
+
     public func setPurpose(_ item: ConsentItem, granted: Bool, strings: ConsentStrings) {
+        guard !isSubmitting else { return }
         let result = state.applyPurposeToggle(config, item.key, granted)
         showBlockedMessage(result, item: item, field: item.required ? nil : item.firstRequiredField,
                            strings: strings)
@@ -83,11 +110,13 @@ public final class ConsentFormModel: ObservableObject {
 
     public func setField(_ item: ConsentItem, _ field: ConsentField, granted: Bool,
                          strings: ConsentStrings) {
+        guard !isSubmitting else { return }
         let result = state.applyFieldToggle(config, item.key, field.key, granted)
         showBlockedMessage(result, item: item, field: field, strings: strings)
     }
 
     public func setAllGranted(_ granted: Bool, strings: ConsentStrings) {
+        guard !isSubmitting else { return }
         if granted {
             state.applyAcceptAll(config)
             errorMessage = nil
@@ -98,21 +127,20 @@ public final class ConsentFormModel: ObservableObject {
     }
 
     public func isExpanded(_ purposeKey: String) -> Bool {
-        !collapsed.contains(purposeKey)
+        expandedPurpose == purposeKey
     }
 
     public func toggleExpanded(_ purposeKey: String) {
-        if collapsed.contains(purposeKey) {
-            collapsed.remove(purposeKey)
-        } else {
-            collapsed.insert(purposeKey)
-        }
+        guard let item = config?.item(forKey: purposeKey), hasBody(item) else { return }
         objectWillChange.send()
+        expandedPurpose = expandedPurpose == purposeKey ? nil : purposeKey
+        allCollapsed = expandedPurpose == nil
     }
 
     public func setAllCollapsed(_ value: Bool) {
-        allCollapsed = value
-        collapsed = value ? Set((config?.items ?? []).map { $0.key }) : []
+        objectWillChange.send()
+        expandedPurpose = value ? nil : config?.items.first(where: hasBody)?.key
+        allCollapsed = expandedPurpose == nil
     }
 
     // MARK: - Gui
@@ -132,9 +160,10 @@ public final class ConsentFormModel: ObservableObject {
     ///
     /// - Parameter values: gia tri nguoi dung da nhap, xem `ConsentCmp.submit(_:values:)`.
     public func submit(strings: ConsentStrings, values: [String: String]? = nil) {
+        guard !isSubmitting, !isLoading, config?.isActive == true else { return }
         guard validateRequired(strings: strings) else { return }
+        isSubmitting = true
         Task { @MainActor in
-            isSubmitting = true
             do {
                 var working = state
                 let result = try await cmp.submit(&working, values: values)
@@ -153,6 +182,7 @@ public final class ConsentFormModel: ObservableObject {
 
     /// "Tu choi tat ca" cung la mot quyet dinh -> van ghi nhan bang chung.
     public func rejectAllAndSubmit(strings: ConsentStrings, values: [String: String]? = nil) {
+        guard !isSubmitting else { return }
         setAllGranted(false, strings: strings)
         submit(strings: strings, values: values)
     }

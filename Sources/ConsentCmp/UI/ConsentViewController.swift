@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 
 /// Màn consent cho app UIKit (và cầu nối Flutter / React Native trên iOS) — app không phải tự viết
-/// SwiftUI. Chế độ tự gửi: SDK hiện nút "Từ chối tất cả" / "Đồng ý" và tự gọi `/sendData`.
+/// SwiftUI. Chế độ tự gửi: SDK hiện nút "Lưu lựa chọn" và tự gọi `/sendData`.
 ///
 /// ```swift
 /// let vc = ConsentViewController(values: ["email|EMAIL": email]) { state, result in
