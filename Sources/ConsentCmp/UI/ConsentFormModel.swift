@@ -8,6 +8,7 @@ import Combine
 @available(iOS 14.0, macOS 11.0, *)
 public final class ConsentFormModel: ObservableObject {
 
+    @Published public private(set) var appearance: ConsentAppearance = .defaults
     @Published public private(set) var config: ConsentConfig?
     @Published public private(set) var state = ConsentState()
     @Published public var errorMessage: String?
@@ -78,6 +79,7 @@ public final class ConsentFormModel: ObservableObject {
 
     /// Shared by loading and local preview/tests; presentation never changes consent rules.
     func applyLoadedConfig(_ config: ConsentConfig) {
+        appearance = cmp.appearance
         self.config = config
         self.state = cmp.initialState(config)
         errorMessage = nil

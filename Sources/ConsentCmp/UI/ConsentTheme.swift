@@ -30,6 +30,29 @@ public struct ConsentTheme {
     public var chipRadius: CGFloat = 4
 
     public init() {}
+
+    public init(appearance: ConsentAppearance) {
+        self.init()
+        if let value = appearance.color("background") { background = Color.cmpHex(value) }
+        if let value = appearance.color("surface") { surface = Color.cmpHex(value) }
+        if let value = appearance.color("border") { border = Color.cmpHex(value) }
+        if let value = appearance.color("textPrimary") { textPrimary = Color.cmpHex(value) }
+        if let value = appearance.color("textSecondary") { textSecondary = Color.cmpHex(value) }
+        if let value = appearance.color("primary") { primary = Color.cmpHex(value) }
+        if let value = appearance.color("link") { link = Color.cmpHex(value) }
+        if let value = appearance.color("linkAlt") { linkAlt = Color.cmpHex(value) }
+        if let value = appearance.color("accent") { accent = Color.cmpHex(value) }
+        if let value = appearance.color("error") { error = Color.cmpHex(value) }
+        if let value = appearance.color("selectedBackground") { selectedBackground = Color.cmpHex(value) }
+        if let value = appearance.color("selectedBorder") { selectedBorder = Color.cmpHex(value) }
+        if let value = appearance.color("fieldBorder") { fieldBorder = Color.cmpHex(value) }
+        if let value = appearance.color("chipBackground") { chipBackground = Color.cmpHex(value) }
+        if let value = appearance.color("chipBorder") { chipBorder = Color.cmpHex(value) }
+        if let value = appearance.color("chipText") { chipText = Color.cmpHex(value) }
+        cardRadius = CGFloat(appearance.radius("cardRadius", fallback: Double(cardRadius)))
+        fieldRadius = CGFloat(appearance.radius("fieldRadius", fallback: Double(fieldRadius)))
+        chipRadius = CGFloat(appearance.radius("chipRadius", fallback: Double(chipRadius)))
+    }
 }
 
 private extension Color {

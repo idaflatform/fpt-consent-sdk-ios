@@ -24,6 +24,12 @@ public final class ConsentCmp {
     /// Nguon lay gia tri that cua truong du lieu tu form cua app.
     public typealias ValueSource = (ConsentField) -> String?
 
+    public private(set) var appearance: ConsentAppearance = .defaults
+    public let appearances: AppearanceRepository
+    public func getAppearance() async -> ConsentAppearance { await appearances.get() }
+    public func refreshAppearance() async -> ConsentAppearance { await appearances.refresh() }
+    public func clearAppearanceCache() async { await appearances.clear() }
+
     private let options: ConsentOptions
     private let api: ConsentApi
     private let storage: StoragePort
@@ -39,6 +45,7 @@ public final class ConsentCmp {
                 storage: StoragePort = UserDefaultsStorage(),
                 uuid: @escaping () -> String = { UUID().uuidString },
                 now: @escaping () -> Date = { Date() }) {
+        self.appearances = AppearanceRepository(options: options, http: http)
         self.options = options
         self.api = ConsentApi(options: options, http: http)
         self.storage = storage
@@ -153,6 +160,7 @@ public final class ConsentCmp {
     /// mat mang thi rot ve ban cache neu co.
     @discardableResult
     public func fetchConfig(preferCache: Bool = false) async throws -> ConsentConfig {
+        appearance = await appearances.get()
         if preferCache, options.cacheConfig, let cached = loadCachedConfig(ttlMs: options.configTtlMs) {
             cachedConfig = cached
             return cached

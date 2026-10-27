@@ -5,7 +5,8 @@ import SwiftUI
 @available(iOS 14.0, macOS 11.0, *)
 public struct ConsentFormView: View {
     @ObservedObject private var model: ConsentFormModel
-    private let theme: ConsentTheme
+    private let themeOverride: ConsentTheme?
+    private var theme: ConsentTheme { themeOverride ?? ConsentTheme(appearance: model.appearance) }
     private let strings: ConsentStrings
     private let showSectionTitle: Bool
     private let embeddedInForm: Bool
@@ -17,20 +18,32 @@ public struct ConsentFormView: View {
     @ScaledMetric(relativeTo: .body) private var fontScale: CGFloat = 1
 
     public init(model: ConsentFormModel,
-                theme: ConsentTheme = ConsentTheme(),
+                theme: ConsentTheme? = nil,
                 strings: ConsentStrings = ConsentStrings(),
                 showSectionTitle: Bool = false,
                 embeddedInForm: Bool = false,
                 thirdPartiesOnSharedOnly: Bool = false,
                 values: [String: String]? = nil) {
         self.model = model
-        self.theme = theme
+        self.themeOverride = theme
         self.strings = strings
         self.showSectionTitle = showSectionTitle
         self.embeddedInForm = embeddedInForm
         self.thirdPartiesOnSharedOnly = thirdPartiesOnSharedOnly
         self.values = values
         _embeddedListCollapsed = State(initialValue: embeddedInForm)
+    }
+
+    private func appearanceFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let unscaled = size / max(0.01, fontScale)
+        let role = unscaled >= 16 ? "title" : unscaled <= 12 ? "caption" : weight == .regular ? "body" : "button"
+        let resolvedSize = CGFloat(model.appearance.size(role, fallback: Double(unscaled))) * fontScale
+        let resolvedWeight = model.appearance.weight(role, fallback: weight == .regular ? 400 : weight == .semibold ? 600 : 700)
+        let fontWeight: Font.Weight = resolvedWeight >= 700 ? .bold : resolvedWeight >= 600 ? .semibold : resolvedWeight >= 500 ? .medium : .regular
+        if let name = model.appearance.fontName(weight: Int(resolvedWeight)) {
+            return Font.custom(name, fixedSize: resolvedSize).weight(fontWeight)
+        }
+        return Font.system(size: resolvedSize, weight: fontWeight)
     }
 
     private var layout: ConsentLayout { ConsentLayout(width: measuredWidth) }
@@ -46,7 +59,7 @@ public struct ConsentFormView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if showSectionTitle {
-                Text(strings.sectionTitle).font(.system(size: size(13, 12), weight: .bold))
+                Text(strings.sectionTitle).font(appearanceFont(size: size(13, 12), weight: .bold))
             }
             VStack(alignment: .leading, spacing: 0) {
                 if model.isLoading { loading }
@@ -90,7 +103,7 @@ public struct ConsentFormView: View {
             }
             if let error = model.errorMessage {
                 rule
-                Text(error).font(.system(size: size(13, 12))).foregroundColor(theme.error)
+                Text(error).font(appearanceFont(size: size(13, 12))).foregroundColor(theme.error)
                     .fixedSize(horizontal: false, vertical: true).padding(layout.side)
             }
             if !embeddedInForm { rule; actions.padding(layout.side) }
@@ -101,10 +114,10 @@ public struct ConsentFormView: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.config?.config?.title ?? strings.listTitle)
-                    .font(.system(size: layout.wide ? 20 * fontScale : size(16, 14), weight: .bold))
+                    .font(appearanceFont(size: layout.wide ? 20 * fontScale : size(16, 14), weight: .bold))
                     .fixedSize(horizontal: false, vertical: true)
                 if let description = model.config?.config?.description, !description.isEmpty {
-                    Text(description).font(.system(size: size(12, 11))).foregroundColor(theme.textSecondary)
+                    Text(description).font(appearanceFont(size: size(12, 11))).foregroundColor(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
@@ -114,7 +127,7 @@ public struct ConsentFormView: View {
 
     private var master: some View {
         HStack(spacing: 12) {
-            Text(strings.acceptAll).font(.system(size: size(14, 13), weight: .bold))
+            Text(strings.acceptAll).font(appearanceFont(size: size(14, 13), weight: .bold))
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             Toggle(strings.acceptAll, isOn: Binding(
@@ -131,16 +144,16 @@ public struct ConsentFormView: View {
                 Button { model.toggleExpanded(item.key) } label: {
                     HStack(spacing: 0) {
                         Image(systemName: open ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(appearanceFont(size: 12, weight: .semibold))
                             .foregroundColor(open ? theme.primary : theme.textSecondary)
                             .frame(width: layout.compact ? 32 : 40)
                             .opacity(model.hasBody(item) ? 1 : 0).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 3) {
                             Text((item.label ?? "") + (item.mustBeGranted ? " *" : ""))
-                                .font(.system(size: size(14, 13), weight: .bold))
+                                .font(appearanceFont(size: size(14, 13), weight: .bold))
                                 .fixedSize(horizontal: false, vertical: true)
                             if !open, let description = item.description, !description.isEmpty {
-                                Text(description).font(.system(size: size(12, 11)))
+                                Text(description).font(appearanceFont(size: size(12, 11)))
                                     .foregroundColor(theme.textSecondary).lineLimit(layout.compact ? 2 : 1)
                             }
                         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -150,7 +163,7 @@ public struct ConsentFormView: View {
                     .accessibilityValue(open ? strings.collapse : strings.expand)
                 if layout.wide && open && !item.visibleDataFields.isEmpty {
                     Text("\(selectedFields(item))/\(item.visibleDataFields.count)")
-                        .font(.system(size: size(12, 11), weight: .bold)).foregroundColor(theme.link)
+                        .font(appearanceFont(size: size(12, 11), weight: .bold)).foregroundColor(theme.link)
                 }
                 Toggle(item.label ?? "", isOn: Binding(
                     get: { model.state.isGranted(item.key) },
@@ -167,14 +180,14 @@ public struct ConsentFormView: View {
     private func purposeBody(_ item: ConsentItem) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if let description = item.description, !description.isEmpty {
-                Text(description).font(.system(size: size(12, 11)))
+                Text(description).font(appearanceFont(size: size(12, 11)))
                     .lineLimit(description.count > 180 && !fullDescriptions.contains(item.key) ? 3 : nil)
                     .fixedSize(horizontal: false, vertical: true)
                 if description.count > 180 {
                     Button(fullDescriptions.contains(item.key) ? strings.collapse : strings.showMore) {
                         if fullDescriptions.contains(item.key) { fullDescriptions.remove(item.key) }
                         else { fullDescriptions.insert(item.key) }
-                    }.buttonStyle(PlainButtonStyle()).font(.system(size: size(12, 11), weight: .bold))
+                    }.buttonStyle(PlainButtonStyle()).font(appearanceFont(size: size(12, 11), weight: .bold))
                         .foregroundColor(theme.link).frame(minHeight: 32)
                 }
             }
@@ -202,13 +215,13 @@ public struct ConsentFormView: View {
 
     private func fieldsCount(_ item: ConsentItem) -> some View {
         Text(String(format: strings.fieldsCount, selectedFields(item), item.visibleDataFields.count))
-            .font(.system(size: size(12, 11), weight: .bold)).fixedSize(horizontal: false, vertical: true)
+            .font(appearanceFont(size: size(12, 11), weight: .bold)).fixedSize(horizontal: false, vertical: true)
     }
     private func selectAll(_ item: ConsentItem) -> some View {
         let all = selectedFields(item) == item.visibleDataFields.count
         return Button(all ? strings.deselectAll : strings.selectAll) {
             model.setAllFields(item, granted: !all, strings: strings)
-        }.buttonStyle(PlainButtonStyle()).font(.system(size: size(12, 11), weight: .bold))
+        }.buttonStyle(PlainButtonStyle()).font(appearanceFont(size: size(12, 11), weight: .bold))
             .foregroundColor(theme.link).fixedSize(horizontal: false, vertical: true).frame(minHeight: 36).disabled(!enabled)
     }
     private var bodyWidth: CGFloat {
@@ -225,16 +238,16 @@ public struct ConsentFormView: View {
         let names = sharedWith(item)
         let labels = names.isEmpty ? [] : [strings.sharedWith] + names
         let limit = availableWidth ?? bodyWidth
-        let fontSize = size(11, 10)
+        let fontSize = CGFloat(model.appearance.size("caption", fallback: Double(layout.compact ? 10 : 11))) * fontScale
         let widths = labels.enumerated().map { index, text in
-            ConsentLayout.textWidth(text, size: fontSize) + (index == 0 ? 0 : 16)
+            ConsentLayout.textWidth(text, size: fontSize, fontName: model.appearance.fontName(weight: 400)) + (index == 0 ? 0 : 16)
         }
         return VStack(alignment: .leading, spacing: 6) {
             if !names.isEmpty {
                 ForEach(Array(ConsentLayout.rows(widths: widths, availableWidth: limit).enumerated()), id: \.offset) { row in
                     HStack(alignment: .center, spacing: 8) {
                         ForEach(row.element, id: \.self) { index in
-                            Text(labels[index]).font(.system(size: fontSize))
+                            Text(labels[index]).font(appearanceFont(size: fontSize))
                                 .foregroundColor(index == 0 ? theme.textSecondary : theme.chipText)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .padding(.horizontal, index == 0 ? 0 : 8).padding(.vertical, 4)
@@ -283,10 +296,10 @@ public struct ConsentFormView: View {
             HStack(spacing: 6) {
                 if checkbox || selected {
                     Image(systemName: checkbox ? (selected ? "checkmark.square.fill" : "square") : "checkmark")
-                        .font(.system(size: size(13, 12), weight: .semibold)).accessibilityHidden(true)
+                        .font(appearanceFont(size: size(13, 12), weight: .semibold)).accessibilityHidden(true)
                 }
                 Text(field.displayName + (field.required ? " *" : ""))
-                    .font(.system(size: size(13, 12), weight: selected ? .semibold : .regular))
+                    .font(appearanceFont(size: size(13, 12), weight: selected ? .semibold : .regular))
                     .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
             }
             .foregroundColor(selected ? theme.primary : theme.textPrimary)
@@ -308,13 +321,13 @@ public struct ConsentFormView: View {
                 Text(hidden ? String(format: strings.showPurposes, items.count) : strings.collapse)
                     .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: hidden ? "chevron.down" : "chevron.up").accessibilityHidden(true)
-            }.font(.system(size: size(13, 12), weight: .bold)).foregroundColor(theme.link)
+            }.font(appearanceFont(size: size(13, 12), weight: .bold)).foregroundColor(theme.link)
                 .frame(maxWidth: .infinity, minHeight: 48).contentShape(Rectangle())
         }.buttonStyle(PlainButtonStyle()).background(theme.surface).disabled(model.isSubmitting)
     }
     private var summary: some View {
         Text(String(format: strings.selectedSummary, items.filter { model.state.isGranted($0.key) }.count, items.count))
-            .font(.system(size: size(12, 11))).foregroundColor(theme.textSecondary)
+            .font(appearanceFont(size: size(12, 11))).foregroundColor(theme.textSecondary)
             .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
     }
     private var submit: some View {
@@ -322,7 +335,7 @@ public struct ConsentFormView: View {
             HStack(spacing: 8) {
                 if model.isSubmitting { ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white)) }
                 Text(model.config?.config?.submitLabel ?? strings.submit)
-                    .font(.system(size: size(13, 12), weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                    .font(appearanceFont(size: size(13, 12), weight: .bold)).fixedSize(horizontal: false, vertical: true)
             }.foregroundColor(.white).padding(.horizontal, 22).padding(.vertical, 12).frame(minHeight: 48)
                 .background(RoundedRectangle(cornerRadius: theme.fieldRadius).fill(canSubmit || model.isSubmitting ? theme.primary : theme.border))
         }.buttonStyle(PlainButtonStyle()).disabled(!canSubmit)
@@ -334,14 +347,14 @@ public struct ConsentFormView: View {
     private var loading: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text(strings.loading).font(.system(size: size(13, 12))).foregroundColor(theme.textSecondary)
+            Text(strings.loading).font(appearanceFont(size: size(13, 12))).foregroundColor(theme.textSecondary)
         }.padding(32).frame(maxWidth: .infinity)
     }
     private func failure(_ message: String) -> some View {
         VStack(spacing: 12) {
             Text(message).foregroundColor(theme.error).fixedSize(horizontal: false, vertical: true)
             Button(strings.retry) { Task { await model.load() } }.foregroundColor(theme.link).frame(minHeight: 44)
-        }.font(.system(size: size(13, 12))).padding(24).frame(maxWidth: .infinity)
+        }.font(appearanceFont(size: size(13, 12))).padding(24).frame(maxWidth: .infinity)
     }
     private var rule: some View { Rectangle().fill(theme.border).frame(height: 1) }
     private func selectedFields(_ item: ConsentItem) -> Int {

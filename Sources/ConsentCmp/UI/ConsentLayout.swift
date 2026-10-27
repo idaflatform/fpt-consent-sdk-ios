@@ -29,11 +29,11 @@ struct ConsentLayout {
         return rows
     }
 
-    static func textWidth(_ text: String, size: CGFloat, bold: Bool = false) -> CGFloat {
+    static func textWidth(_ text: String, size: CGFloat, bold: Bool = false, fontName: String? = nil) -> CGFloat {
         #if canImport(UIKit)
-        let font = UIFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
+        let font = fontName.flatMap { UIFont(name: $0, size: size) } ?? UIFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
         #elseif canImport(AppKit)
-        let font = NSFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
+        let font = fontName.flatMap { NSFont(name: $0, size: size) } ?? NSFont.systemFont(ofSize: size, weight: bold ? .semibold : .regular)
         #endif
         #if canImport(UIKit) || canImport(AppKit)
         return ceil((text as NSString).size(withAttributes: [.font: font]).width)
