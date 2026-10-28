@@ -7,12 +7,13 @@ let package = Package(
         .iOS(.v14),
         .macOS(.v11)
     ],
+    // Chi xuat thu vien: app khach hang chon package trong Xcode chi thay "ConsentCmp".
     products: [
-        .library(name: "ConsentCmp", targets: ["ConsentCmp"]),
-        .executable(name: "ConsentFixtureRunner", targets: ["ConsentFixtureRunner"])
+        .library(name: "ConsentCmp", targets: ["ConsentCmp"])
     ],
     targets: [
         .target(name: "ConsentCmp"),
+        // Chay noi bo: `swift run ConsentFixtureRunner` (SPM tu tao product cho root package).
         .executableTarget(name: "ConsentFixtureRunner", dependencies: ["ConsentCmp"]),
         .testTarget(name: "ConsentCmpTests", dependencies: ["ConsentCmp"])
     ]

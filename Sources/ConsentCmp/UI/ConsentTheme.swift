@@ -6,44 +6,88 @@ import SwiftUI
 public struct ConsentTheme {
 
     public var background = Color.white
-    public var surface = Color(red: 0.97, green: 0.97, blue: 0.98)
-    public var border = Color(red: 0.90, green: 0.91, blue: 0.95)
+    public var surface = Color.cmpHex(0xF7F9FB)
+    public var border = Color.cmpHex(0xE3E8EF)
 
-    public var textPrimary = Color(red: 0.09, green: 0.14, blue: 0.24)
-    public var textSecondary = Color(red: 0.42, green: 0.46, blue: 0.56)
+    public var textPrimary = Color.cmpHex(0x1D2433)
+    public var textSecondary = Color.cmpHex(0x5B6674)
 
-    public var primary = Color(red: 0.18, green: 0.44, blue: 0.93)
-    public var link = Color(red: 0.18, green: 0.44, blue: 0.93)
-    public var linkAlt = Color(red: 0.07, green: 0.63, blue: 0.31)
-    public var accent = Color(red: 0.92, green: 0.48, blue: 0.17)
-    public var error = Color(red: 0.85, green: 0.18, blue: 0.13)
+    public var primary = Color.cmpHex(0x146052)
+    public var link = Color.cmpHex(0x146052)
+    public var linkAlt = Color.cmpHex(0x146052)
+    public var accent = Color.cmpHex(0x1D2433)
+    public var error = Color.cmpHex(0xD92D20)
+    public var selectedBackground = Color.cmpHex(0xE3F2EF)
+    public var selectedBorder = Color.cmpHex(0x7FB5A8)
+    public var fieldBorder = Color.cmpHex(0xD5DCE5)
 
-    public var chipBackground = Color(red: 0.93, green: 0.95, blue: 1.0)
-    public var chipBorder = Color(red: 0.84, green: 0.87, blue: 1.0)
-    public var chipText = Color(red: 0.26, green: 0.34, blue: 0.70)
+    public var chipBackground = Color.cmpHex(0xEEF1F5)
+    public var chipBorder = Color.cmpHex(0xEEF1F5)
+    public var chipText = Color.cmpHex(0x1D2433)
 
     public var cardRadius: CGFloat = 12
-    public var fieldRadius: CGFloat = 10
-    public var chipRadius: CGFloat = 6
+    public var fieldRadius: CGFloat = 8
+    public var chipRadius: CGFloat = 4
 
     public init() {}
+
+    public init(appearance: ConsentAppearance) {
+        self.init()
+        if let value = appearance.color("background") { background = Color.cmpHex(value) }
+        if let value = appearance.color("surface") { surface = Color.cmpHex(value) }
+        if let value = appearance.color("border") { border = Color.cmpHex(value) }
+        if let value = appearance.color("textPrimary") { textPrimary = Color.cmpHex(value) }
+        if let value = appearance.color("textSecondary") { textSecondary = Color.cmpHex(value) }
+        if let value = appearance.color("primary") { primary = Color.cmpHex(value) }
+        if let value = appearance.color("link") { link = Color.cmpHex(value) }
+        if let value = appearance.color("linkAlt") { linkAlt = Color.cmpHex(value) }
+        if let value = appearance.color("accent") { accent = Color.cmpHex(value) }
+        if let value = appearance.color("error") { error = Color.cmpHex(value) }
+        if let value = appearance.color("selectedBackground") { selectedBackground = Color.cmpHex(value) }
+        if let value = appearance.color("selectedBorder") { selectedBorder = Color.cmpHex(value) }
+        if let value = appearance.color("fieldBorder") { fieldBorder = Color.cmpHex(value) }
+        if let value = appearance.color("chipBackground") { chipBackground = Color.cmpHex(value) }
+        if let value = appearance.color("chipBorder") { chipBorder = Color.cmpHex(value) }
+        if let value = appearance.color("chipText") { chipText = Color.cmpHex(value) }
+        cardRadius = CGFloat(appearance.radius("cardRadius", fallback: Double(cardRadius)))
+        fieldRadius = CGFloat(appearance.radius("fieldRadius", fallback: Double(fieldRadius)))
+        chipRadius = CGFloat(appearance.radius("chipRadius", fallback: Double(chipRadius)))
+    }
+}
+
+private extension Color {
+    static func cmpHex(_ value: UInt32) -> Color {
+        Color(red: Double((value >> 16) & 255) / 255,
+              green: Double((value >> 8) & 255) / 255,
+              blue: Double(value & 255) / 255)
+    }
 }
 
 /// Chuoi hien thi — app dich sang ngon ngu khac bang cach truyen ban rieng.
 public struct ConsentStrings {
 
     public var sectionTitle = "Đồng ý xử lý dữ liệu"
-    public var listTitle = "Danh sách sự đồng ý"
+    public var listTitle = "Nội dung chia sẻ dữ liệu"
     public var hideList = "Ẩn danh sách"
     public var showList = "Hiện danh sách"
     public var collapse = "Thu gọn"
     public var expand = "Mở rộng"
     public var acceptAll = "Đồng ý tất cả"
     public var rejectAll = "Từ chối tất cả"
-    public var submit = "Đồng ý"
+    public var submit = "Lưu lựa chọn"
     public var mandatory = "Bắt buộc"
     public var loading = "Đang tải cấu hình…"
     public var retry = "Thử lại"
+    public var showPurposes = "Xem %d mục đích"
+    public var showMore = "Xem thêm"
+    public var sharedWith = "Chia sẻ với:"
+    public var fieldsCount = "Trường dữ liệu · %d/%d"
+    public var selectAll = "Chọn tất cả"
+    public var deselectAll = "Bỏ chọn tất cả"
+    public var selectedSummary = "%d / %d mục đích đã chọn"
+    public var inactive = "Collection Point không hoạt động"
+    public var selected = "Đã chọn"
+    public var notSelected = "Chưa chọn"
 
     /// %@ = tên mục đích.
     public var errorRequiredPurpose = "Vui lòng đồng ý mục đích bắt buộc: %@"

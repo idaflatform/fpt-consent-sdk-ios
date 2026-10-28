@@ -64,6 +64,24 @@ struct PrivacyScreen: View {
 
 Xong. Phần dưới là chi tiết và các trường hợp khác.
 
+### App UIKit / Flutter / React Native — không cần viết SwiftUI
+
+`ConsentViewController` bọc sẵn màn trên (chế độ SDK tự gửi):
+
+```swift
+import ConsentCmp
+
+let vc = ConsentViewController(values: ["email|EMAIL": email]) { state, result in
+    registerAccount(consentId: result.consentId)   // gửi xong; được present thì tự đóng
+}
+present(vc, animated: true)
+```
+
+Muốn nhúng khối consent vào một màn UIKit có sẵn nút của app (`embeddedInForm`), gắn
+`UIHostingController(rootView: ConsentFormView(model: model, embeddedInForm: true))` làm child view
+controller, rồi ở nút của app gọi `ConsentCmp.shared.submit(&state, values:)` như mục
+[Nhúng vào form của app](#nhúng-vào-form-của-app).
+
 ---
 
 ## Nâng cấp từ 1.0.x lên 1.1.0
@@ -243,7 +261,36 @@ strings.submit = "Tôi đồng ý"
 ConsentFormView(model: model, theme: theme, strings: strings)
 ```
 
-Cờ `thirdPartiesOnSharedOnly: true` để chip bên thứ ba chỉ hiện ở trường `sharedWithSystem = true`.
+Cờ `thirdPartiesOnSharedOnly: true` chỉ hiện bên thứ ba của mục đích có ít nhất một
+trường hiển thị `sharedWithSystem = true`.
+
+### Giao diện đồng bộ Android (nhánh 1.2.0)
+
+Phần này đang ở nhánh `feat/accordion-consent-ui`, chưa có tag release 1.2.0.
+Để thử trước khi phát hành, chọn branch này trong Xcode Package Dependencies
+hoặc dùng `.package(url: "https://github.com/idaflatform/fpt-consent-sdk-ios.git",
+branch: "feat/accordion-consent-ui")`.
+
+- Một khung accordion, mặc định chỉ mở mục đầu tiên có nội dung; mở mục khác sẽ
+  đóng mục trước. `setAllCollapsed(false)` mở lại mục đầu tiên.
+- Màu chính `#146052`, nền mục mở `#F7F9FB`, trường đã chọn `#E3F2EF`.
+- Dưới 360pt **chiều rộng form**: typography compact; từ 560pt: checkbox hai cột
+  và “Đồng ý tất cả” cạnh tiêu đề. Chip, nhãn dài và bên thứ ba xuống dòng.
+- Chữ dùng Dynamic Type. Khi tăng cỡ chữ, footer và nhóm chọn tất cả chuyển thành
+  hàng dọc để giữ đủ nội dung. Form không áp chiều cao cố định.
+- `embeddedInForm: true`: ẩn footer SDK, mặc định thu gọn danh sách sau nút
+  “Xem N mục đích”; app tiếp tục tự submit như trước.
+- Độc lập: tổng số mục đích đã chọn và nút “Lưu lựa chọn”; tắt switch tổng rồi
+  lưu để ghi nhận lựa chọn từ chối. Bỏ nút “Từ chối tất cả” riêng khỏi giao diện.
+- `showSectionTitle` mặc định `false`; truyền `true` để giữ tiêu đề phụ của bản cũ.
+- Các thuộc tính theme/string cũ vẫn có thể tuỳ biến; bổ sung màu chip đã chọn,
+  viền trường và chuỗi đếm/chọn tất cả.
+
+Xcode previews: `ConsentFormPreviews` có form 312pt, chữ lớn, tablet 680pt và nhúng.
+Chạy `swift test` trên Mac để kiểm tra layout packing và trạng thái accordion /
+trường bắt buộc. Trên Windows mới kiểm tra cú pháp; chưa build SwiftUI, chạy
+XCTest hoặc render preview. Cần nghiệm thu hình ảnh trên simulator/iPhone trước
+khi phát hành iOS 1.2.0.
 
 ## Hằng số hành vi (đừng tự đổi ở một nền tảng)
 
