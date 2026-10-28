@@ -1,8 +1,13 @@
 # Remote appearance
 
-The SDK reads `/appearance` once for each base URL, API path and integration key,
-persists validated schema 1 tokens in Application Support, and reuses them without
-TTL or background version checks. Consent content still loads using `/config`.
+The SDK reads `data.appearance` from `GET /consent/config?code_config=...` with
+its existing integration header. Normal form loading shares the content response;
+there is no additional appearance request. Validated schema 1 tokens are persisted
+per base URL, API path and integration key without TTL or background checks.
+Consent content still loads normally, but subsequent responses do not replace a
+cached appearance. Missing/invalid appearance uses defaults without failing consent
+loading. Standalone `getAppearance()` on a cache miss and explicit
+`refreshAppearance()` fetch `/consent/config` to read `data.appearance`.
 The native form model applies appearance to SwiftUI and the UIKit hosting controller.
 An explicitly supplied `ConsentTheme` takes precedence over remote colors/shapes.
 

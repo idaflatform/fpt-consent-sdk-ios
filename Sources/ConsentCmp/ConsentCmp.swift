@@ -26,9 +26,13 @@ public final class ConsentCmp {
 
     public private(set) var appearance: ConsentAppearance = .defaults
     public let appearances: AppearanceRepository
-    public func getAppearance() async -> ConsentAppearance { await appearances.get() }
-    public func refreshAppearance() async -> ConsentAppearance { await appearances.refresh() }
-    public func clearAppearanceCache() async { await appearances.clear() }
+    public func getAppearance() async -> ConsentAppearance {
+        appearance = await appearances.get(); return appearance
+    }
+    public func refreshAppearance() async -> ConsentAppearance {
+        appearance = await appearances.refresh(); return appearance
+    }
+    public func clearAppearanceCache() async { await appearances.clear(); appearance = .defaults }
 
     private let options: ConsentOptions
     private let api: ConsentApi
@@ -43,9 +47,10 @@ public final class ConsentCmp {
     public init(options: ConsentOptions,
                 http: HttpPort = URLSessionHttp(),
                 storage: StoragePort = UserDefaultsStorage(),
+                appearanceStorage: StoragePort? = nil,
                 uuid: @escaping () -> String = { UUID().uuidString },
                 now: @escaping () -> Date = { Date() }) {
-        self.appearances = AppearanceRepository(options: options, http: http)
+        self.appearances = AppearanceRepository(options: options, http: http, storage: appearanceStorage)
         self.options = options
         self.api = ConsentApi(options: options, http: http)
         self.storage = storage
@@ -160,13 +165,14 @@ public final class ConsentCmp {
     /// mat mang thi rot ve ban cache neu co.
     @discardableResult
     public func fetchConfig(preferCache: Bool = false) async throws -> ConsentConfig {
-        appearance = await appearances.get()
         if preferCache, options.cacheConfig, let cached = loadCachedConfig(ttlMs: options.configTtlMs) {
+            appearance = await appearances.fromConfig(storage.get(Keys.config))
             cachedConfig = cached
             return cached
         }
         do {
             let result = try await api.fetchConfig()
+            appearance = await appearances.fromConfig(result.raw)
             if options.cacheConfig {
                 storage.set(Keys.config, result.raw)
                 storage.set(Keys.configAt, String(now().timeIntervalSince1970 * 1000))
@@ -174,8 +180,10 @@ public final class ConsentCmp {
             cachedConfig = result.config
             return result.config
         } catch let error as ConsentError {
+            appearance = await appearances.fromConfig(nil)
             // Mat mang: dung tam ban cache cu de nguoi dung van tra loi duoc.
             if error.httpStatus == 0, let fallback = loadCachedConfig(ttlMs: .greatestFiniteMagnitude) {
+                appearance = await appearances.fromConfig(storage.get(Keys.config))
                 cachedConfig = fallback
                 return fallback
             }

@@ -21,6 +21,15 @@ public struct ConsentAppearance {
               json["typography"] is [String: Any] else { throw ConsentError(message: "Unsupported appearance") }
         return ConsentAppearance(payload: json)
     }
+    static func fromConfig(_ raw: String) throws -> ConsentAppearance {
+        guard let data = raw.data(using: .utf8),
+              let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let appearance = (root["data"] as? [String: Any] ?? root)["appearance"] as? [String: Any] else {
+            throw ConsentError(message: "Config response has no valid appearance object")
+        }
+        let serialized = try JSONSerialization.data(withJSONObject: appearance)
+        return try parse(String(decoding: serialized, as: UTF8.self))
+    }
     public func color(_ token: String) -> UInt32? {
         guard let colors = theme["colors"] as? [String: Any], let text = colors[token] as? String,
               text.range(of: "^#[a-fA-F0-9]{6}$", options: .regularExpression) != nil else { return nil }
@@ -74,25 +83,33 @@ public actor AppearanceRepository {
         key = "appearance-" + Self.hash(Data(identity.utf8))
     }
     public func get() async -> ConsentAppearance {
+        await resolve(config: nil, useNetwork: true, force: false)
+    }
+    public func fromConfig(_ raw: String?) async -> ConsentAppearance {
+        await resolve(config: raw, useNetwork: false, force: false)
+    }
+    public func refresh() async -> ConsentAppearance {
+        await resolve(config: nil, useNetwork: true, force: true)
+    }
+    private func resolve(config: String?, useNetwork: Bool, force: Bool) async -> ConsentAppearance {
         if let pending = inFlight { return await pending.value }
-        if let current = current { return current }
-        if let raw = storage.get(key), let cached = try? ConsentAppearance.parse(raw) {
+        if !force, let current = current { return current }
+        if !force, let raw = storage.get(key), let cached = try? ConsentAppearance.parse(raw) {
             let restored = await prepareFonts(cached, download: false)
             current = restored
             return restored
         }
-        if attempted { return .defaults }
-        return await refresh()
-    }
-    public func refresh() async -> ConsentAppearance {
-        if let pending = inFlight { return await pending.value }
+        if !force && attempted { return .defaults }
+        if config == nil && !useNetwork { return .defaults }
         attempted = true
         let snapshot = generation
         let previous = current ?? storage.get(key).flatMap { try? ConsentAppearance.parse($0) } ?? .defaults
         let task = Task<ConsentAppearance, Never> {
             do {
-                let raw = try await api.fetchAppearance()
-                let parsed = try ConsentAppearance.parse(raw)
+                let raw: String
+                if let supplied = config { raw = supplied }
+                else { raw = try await api.fetchConfig().raw }
+                let parsed = try ConsentAppearance.fromConfig(raw)
                 let resolved = await prepareFonts(parsed, download: true)
                 if snapshot == generation {
                     let data = try JSONSerialization.data(withJSONObject: parsed.payload)

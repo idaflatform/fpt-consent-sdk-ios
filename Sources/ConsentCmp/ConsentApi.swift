@@ -101,11 +101,6 @@ public struct ConsentApi {
         return (ConsentParser.parseConfig(response.json), response.raw)
     }
 
-    public func fetchAppearance() async throws -> String {
-        let url = configUrl.replacingOccurrences(of: "/config?", with: "/appearance?")
-        return try await request(method: "GET", url: url, body: nil, timeout: 3).raw
-    }
-
     public func sendData(body: [String: Any]) async throws -> SendConsentResult {
         let data: Data
         do {
@@ -118,7 +113,7 @@ public struct ConsentApi {
     }
 
     private func request(method: String, url: String,
-                         body: Data?, timeout: TimeInterval? = nil) async throws -> (json: [String: Any], raw: String) {
+                         body: Data?) async throws -> (json: [String: Any], raw: String) {
         var headers: [String: String] = [
             "Accept": "application/json",
             ConsentApi.headerIntegration: options.codeConfig,
@@ -137,7 +132,7 @@ public struct ConsentApi {
         let response: HttpResponse
         do {
             response = try await http.send(HttpRequest(method: method, url: url, headers: headers,
-                                                       body: body, timeout: timeout ?? options.timeout))
+                                                       body: body, timeout: options.timeout))
         } catch let error as ConsentError {
             throw error
         } catch {
